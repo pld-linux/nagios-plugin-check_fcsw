@@ -1,0 +1,148 @@
+#!/usr/bin/perl
+=pod
+
+=head1 NAME
+
+check_fcsw.pl - Check Fibre Card Switch
+
+=head1 DESCRIPTION
+
+This script checks Fibre Card Switch ports state.
+
+So far written for EMC Fibre Channel Switch.
+
+=head1 AUTHORS
+
+Elan Ruusamäe <glen@delfi.ee>
+
+=head1 LICENSE
+
+GPL v2
+
+=cut
+
+use strict;
+use Nagios::Plugin::SNMP;
+
+my $LABEL = 'FC-SWITCH';
+my $plugin = Nagios::Plugin::SNMP->new(
+	'shortname' => $LABEL,
+	'usage' => 'USAGE: %s'
+);
+
+$plugin->getopts;
+
+my $DEBUG = $plugin->opts->get('snmp-debug');
+
+# FIBRE-CHANNEL-MGMT-MIB
+my %fcConnUnitPortType = (
+	unknown => 1,
+	other => 2,
+	notPresent => 3,
+	hubPort => 4,
+	nPort => 5,
+	lPort => 6,
+	flPort => 7,
+	fPort => 8,
+	ePort => 9,
+	gPort => 10,
+	domainController => 11,
+	hubController => 12,
+	scsi => 13,
+	escon => 14,
+	lan => 15,
+	wan => 16,
+	wdm => 17,
+	ib => 18,
+	ipstore => 19,
+);
+
+my %fcConnUnitPortStatus = (
+	unknown          => 1,
+	unused           => 2,
+	ok               => 3,
+	warning          => 4,
+	failure          => 5,
+	notParticipating => 6,
+	initializing     => 7,
+	bypassed         => 8,
+);
+
+# These are all tables, one entry in each per interface
+my %oids = qw(
+	.1.3.6.1.2.1.8888.1.1.6.1.2 fcConnUnitPortType
+	.1.3.6.1.2.1.8888.1.1.6.1.6 fcConnUnitPortStatus
+);
+
+my %res;
+while (my($oid, $key) = each %oids) {
+	debug("Walking table $oid");
+
+	my $results = $plugin->walk($oid);
+	for my $result (keys %$results) {
+		my $table = $results->{$result};
+		for my $item (keys %$table) {
+			my ($base, $idx) = ($item =~ m/^(.+)\.(\d+)$/);
+
+			debug("$idx: $key = $table->{$item}");
+
+			$res{$idx} = {} unless exists $res{$idx};
+			$res{$idx}->{$key} = $table->{$item};
+		}
+	}
+}
+# Close and destroy session
+$plugin->close();
+
+unless (%res) {
+	print "$LABEL: No SNMP results\n";
+	exit UNKNOWN;
+}
+
+my (%ok, %skip, %error);
+my $level = OK;
+for my $idx (sort {$a <=> $b} keys %res) {
+	my %res = %{$res{$idx}};
+	my ($type, $status) = ($res{'fcConnUnitPortType'}, $res{'fcConnUnitPortStatus'});
+
+	if ($type == $fcConnUnitPortType{notPresent} || $status == $fcConnUnitPortStatus{unused}) {
+		$skip{$idx} = "unused";
+		debug("$idx: skip not present or unused port");
+		next;
+	}
+
+	if ($status == $fcConnUnitPortStatus{ok}) {
+		$ok{$idx} = 'OK';
+		next;
+	}
+
+	$level = CRITICAL;
+	
+	my %map = reverse %fcConnUnitPortStatus;
+	$error{$idx} = $map{$status};
+}
+
+
+my $nports = keys(%ok) + keys(%skip) + keys(%error);
+my @msg = keys(%ok)." of $nports ports OK";
+
+if (keys %error) {
+	my %state;
+	for my $idx (sort {$a <=> $b} keys %error) {
+		my $state = $error{$idx};
+		push(@{$state{$state}}, $idx);
+	}
+	while (my($state, $list) = each %state) {
+		push(@msg, "$state: ".join(', ', @$list));
+	}
+}
+
+print "$LABEL: ", join('; ', @msg), "\n";
+exit $level;
+
+sub debug {
+	return unless $DEBUG == 1;
+	my $msg = shift;
+
+	print STDERR scalar(localtime()) . ": $msg\n";
+}
