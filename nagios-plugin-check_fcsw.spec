@@ -1,17 +1,17 @@
 %include    /usr/lib/rpm/macros.perl
 %define     plugin  check_fcsw
-Summary:    Nagios plugin to check Fibre Switches
-Name:       nagios-plugin-%{plugin}
-Version:    0.1
-Release:    1
-License:    GPL v2
-Group:      Networking
-BuildRequires:  rpm-perlprov >= 4.1-13
-Source0:    %{plugin}
-Source1:    %{plugin}.cfg
-Requires:   nagios-core
-BuildArch:  noarch
-BuildRoot:  %{tmpdir}/%{name}-%{version}-root-%(id -u -n)
+Summary:	Nagios plugin to check Fibre Switches
+Name:		nagios-plugin-%{plugin}
+Version:	0.1
+Release:	1
+License:	GPL v2
+Group:		Networking
+BuildRequires:	rpm-perlprov >= 4.1-13
+Source0:	%{plugin}
+Source1:	%{plugin}.cfg
+Requires:	nagios-core
+BuildArch:	noarch
+BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define     _sysconfdir /etc/nagios/plugins
 %define     plugindir   %{_prefix}/lib/nagios/plugins
