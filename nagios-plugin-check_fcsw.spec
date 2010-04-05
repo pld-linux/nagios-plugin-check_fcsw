@@ -3,13 +3,13 @@
 Summary:	Nagios plugin to check Fibre Switches
 Name:		nagios-plugin-%{plugin}
 Version:	0.1
-Release:	1
+Release:	2
 License:	GPL v2
 Group:		Networking
 BuildRequires:	rpm-perlprov >= 4.1-13
 Source0:	%{plugin}
 Source1:	%{plugin}.cfg
-Requires:	nagios-core
+Requires:	nagios-common
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
