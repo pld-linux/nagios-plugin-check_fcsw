@@ -1,4 +1,3 @@
-%include    /usr/lib/rpm/macros.perl
 %define     plugin  check_fcsw
 Summary:	Nagios plugin to check Fibre Switches
 Name:		nagios-plugin-%{plugin}
